@@ -64,7 +64,7 @@ void mainloop(Render_Parameter *window, char *array, SDL_Texture *texture, SDL_R
 
 void update_Texture(Render_Parameter *window, char *array, SDL_Texture *texture, SDL_Renderer *renderer);
 
-void refresh_events(Render_Parameter *window, SDL_Event *events, int *isOpen);
+void refresh_events(Render_Parameter *window, SDL_Event *events, int *isOpen, char *array);
 
 void mouseClickDownEvents(Render_Parameter *window, SDL_Event *events);
 
@@ -74,6 +74,8 @@ void mouseMotionEvent(Render_Parameter *window, SDL_Event *events);
 
 void mouseWheelEvent(Render_Parameter *window, SDL_Event *events);
 
-void keyDownEvents(Render_Parameter *window, SDL_Event *events);
+void keyDownEvents(Render_Parameter *window, SDL_Event *events, char *array);
+
+void saveScreen(Render_Parameter *window, char *array);
 
 #endif

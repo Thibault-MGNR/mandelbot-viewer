@@ -4,8 +4,12 @@
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 #include <SDL2/SDL.h>
+#include <time.h>
+#include <string.h>
 
 #include "mandelbrot.h"
+
+#define MAX_SIZE 80
 
 __device__ Complex complex_product(Complex *a, Complex *b){
     Complex c;
@@ -186,7 +190,7 @@ void printRenderParameter(Render_Parameter *param){
     printf("Position: z= %lf + %lfi\n", param->position.x, param->position.y);
     printf("dimension: x:%d, y:%d\n", (int)param->dimension.x, (int)param->dimension.y);
     printf("maxIt: %d\n", (int)param->maxIt);
-    printf("initMaxIt: %f\n", param->initMaxIt);
+    printf("initMaxIt: %d\n", param->initMaxIt);
     printf("time: %f ms\n", param->time);
     printf("zoom: %f\n", param->zoom);
 }
@@ -229,13 +233,13 @@ void mainloop(Render_Parameter *window, char *array, SDL_Texture *texture, SDL_R
     int isOpen = 1;
     while (isOpen){
         update_Texture(window, array, texture, pRenderer);
-        refresh_events(window, &events, &isOpen);
+        refresh_events(window, &events, &isOpen, array);
     }
 }
 
 /* ------------------------------------------------ */
 
-void refresh_events(Render_Parameter *window, SDL_Event *events, int *isOpen){
+void refresh_events(Render_Parameter *window, SDL_Event *events, int *isOpen, char *array){
     while (SDL_PollEvent(events)){
         switch (events->type)
         {
@@ -252,7 +256,7 @@ void refresh_events(Render_Parameter *window, SDL_Event *events, int *isOpen){
                 mouseWheelEvent(window, events);
                 break;
             case SDL_KEYDOWN:
-                keyDownEvents(window, events);
+                keyDownEvents(window, events, array);
                 break;
             case SDL_QUIT:
                 *isOpen = 0;
@@ -312,7 +316,7 @@ void mouseWheelEvent(Render_Parameter *window, SDL_Event *events){
 
 /* ------------------------------------------------ */
 
-void keyDownEvents(Render_Parameter *window, SDL_Event *events){
+void keyDownEvents(Render_Parameter *window, SDL_Event *events, char *array){
     switch(events->key.keysym.sym){
         case SDLK_SPACE:
             if(window->renderMode == 0){
@@ -324,7 +328,42 @@ void keyDownEvents(Render_Parameter *window, SDL_Event *events){
         case SDLK_RETURN:
             printRenderParameter(window);
             break;
+        case SDLK_p:
+            saveScreen(window, array);
+            break;
     }
 }
 
 /* ------------------------------------------------ */
+
+void saveScreen(Render_Parameter *window, char *array){
+    char *picture_a = (char*)malloc(sizeof(char) * 4 * window->size);
+    for(int i = 0; i < window->size; i++){
+        picture_a[i*4] = array[i*4 + 1];
+        picture_a[i*4 + 1] = array[i*4 + 2];
+        picture_a[i*4 + 2] = array[i*4 + 3];
+        picture_a[i*4 + 3] = array[i*4];
+    }
+
+    SDL_Surface *surface = SDL_CreateRGBSurfaceFrom(picture_a, window->dimension.x, window->dimension.y, 8*4, window->dimension.x * 4 * sizeof(char), 0, 0, 0, 0);
+
+    time_t timestamp = time( NULL );
+    struct tm * pTime = localtime( & timestamp );
+
+    char file_path[ MAX_SIZE ];
+    strftime( file_path, MAX_SIZE, "out/mandelbrot %d%m%Y%H%M%S.bmp", pTime);
+
+    printf("Enregistrement de: ");
+    printf("%s\n", file_path);
+
+    if(SDL_SaveBMP(surface, file_path) != 0){
+        printf("SDL_SaveBMP failed: %s\n", SDL_GetError());
+    }
+
+    SDL_FreeSurface(surface);
+    free(picture_a);
+}
+
+/* ------------------------------------------------ */
+
+#undef MAX_SIZE
