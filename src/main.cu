@@ -4,9 +4,9 @@
 #include "mandelbrot.cu"
 
 int main(int argc, char* argv[]){
-    const int width = 2000;
-    const int height = 2000;
-    Vector2d dim = {(float)width, (float)height};
+    const int width = 1500;
+    const int height = 1500;
+    Vector2d dim = {(type_of_calc)width, (type_of_calc)height};
     Render_Parameter window = initRenderParam(&dim);
 
     const int size = window.size;

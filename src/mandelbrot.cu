@@ -27,7 +27,7 @@ __device__ Complex complex_square(Complex *a){
 
 /* ------------------------------------------------ */
 
-__device__ float complex_module(Complex *a){
+__device__ type_of_calc complex_module(Complex *a){
     return sqrt((a->imaginary * a->imaginary) + (a->real * a->real));
 }
 
@@ -44,15 +44,15 @@ __device__ Complex complex_sum(Complex *a, Complex *b){
 /* ------------------------------------------------ */
 
 __device__ Vector2d ScreenToImageCoordonate(Render_Parameter *param, Vector2d *pos){
-    float width = (int)param->dimension.x;
-    float height = (int)param->dimension.y;
-    float zoom = param->zoom;
-    float x = pos->x;
-    float y = pos->y;
+    type_of_calc width = (int)param->dimension.x;
+    type_of_calc height = (int)param->dimension.y;
+    type_of_calc zoom = param->zoom;
+    type_of_calc x = pos->x;
+    type_of_calc y = pos->y;
 
     Vector2d imageCoord = {0};
 
-    float rate = width / height;
+    type_of_calc rate = width / height;
 
     imageCoord.x = (((x/width) - 0.5)* rate * 3 * (1/zoom)) + param->position.x;
     imageCoord.y = (((y/height) - 0.5) * 3 * (1/zoom)) + param->position.y;
@@ -99,7 +99,7 @@ __device__ char IsConverge(Vector2d *pos, int maxIt){
 
 /* ------------------------------------------------ */
 
-__device__ double sigmoid(float rate){
+__device__ type_of_calc sigmoid(type_of_calc rate){
     return 1 / (1 + pow(2, -20 * rate + 10));
 }
 
@@ -111,19 +111,19 @@ __global__ void calcFractal(Render_Parameter *param, char *array){
         return;
 
     Vector2d pos;
-    pos.y = (float)floor(i / param->dimension.x);
-    pos.x = (float)(i % (int)param->dimension.x);
+    pos.y = (type_of_calc)floor(i / param->dimension.x);
+    pos.x = (type_of_calc)(i % (int)param->dimension.x);
 
     Vector2d coord = ScreenToImageCoordonate(param, &pos);
 
     char maxIt = IsConverge(&coord, param->maxIt);
-    double rate = (double)maxIt / (double)param->maxIt;
-    double colo = sigmoid(rate);
+    type_of_calc rate = (type_of_calc)maxIt / (type_of_calc)param->maxIt;
+    type_of_calc colo = sigmoid(rate);
 
     array[i*4] = (char)255;
-    array[i*4 + 1] = rate * (double)255;
-    array[i*4 + 2] = colo * (double)255;
-    array[i*4 + 3] = colo * (double)255;
+    array[i*4 + 1] = rate * (type_of_calc)255;
+    array[i*4 + 2] = colo * (type_of_calc)255;
+    array[i*4 + 3] = colo * (type_of_calc)255;
 
     // array[i*4 + 1] = maxIt;
     // array[i*4 + 2] = maxIt;
@@ -139,9 +139,11 @@ Render_Parameter initRenderParam(Vector2d *dim){
     window.zoom = 1;
     window.position.x = -0.5;
     window.position.y = 0;
-    window.maxIt = 100;
+    window.initMaxIt = 100;
+    window.maxIt = window.initMaxIt;
     window.size = dim->x * dim->y;
     window.time = 0;
+    window.isMoving = 0;
 
     return window;
 }
@@ -205,7 +207,7 @@ void initWindows(SDL_Renderer **renderer, SDL_Window **window){
 
 void update_Texture(Render_Parameter *window, char *array, SDL_Texture *texture, SDL_Renderer *renderer){
     renderFractal(window, array, &window->time);
-    printf("Time:  %3.1f ms \n", window->time);
+    printf("Time:  %3.1f ms, log(zoom) = %f\n", window->time, log(window->zoom));
     SDL_UpdateTexture(texture, NULL, array, window->dimension.x * 4);
 
     SDL_RenderClear(renderer);
@@ -221,21 +223,80 @@ void mainloop(Render_Parameter *window, char *array, SDL_Texture *texture, SDL_R
     int isOpen = 1;
     while (isOpen){
         update_Texture(window, array, texture, pRenderer);
-        refresh_events(&events, &isOpen);
+        refresh_events(window, &events, &isOpen);
     }
 }
 
 /* ------------------------------------------------ */
 
-void refresh_events(SDL_Event *events, int *isOpen){
+void refresh_events(Render_Parameter *window, SDL_Event *events, int *isOpen){
     while (SDL_PollEvent(events)){
         switch (events->type)
         {
+            case SDL_MOUSEBUTTONDOWN:
+                keyDownEvents(window, events);
+                break;
+            case SDL_MOUSEBUTTONUP:
+                keyUpEvents(window, events);
+                break;
+            case SDL_MOUSEMOTION:
+                mouseMotionEvent(window, events);
+                break;
+            case SDL_MOUSEWHEEL:
+                mouseWheelEvent(window, events);
+                break;
             case SDL_QUIT:
                 *isOpen = 0;
                 break;
         }
     }
+}
+
+/* ------------------------------------------------ */
+
+void keyDownEvents(Render_Parameter *window, SDL_Event *events){
+    switch(events->button.button){
+        case SDL_BUTTON_LEFT:
+            window->isMoving = 1;
+            break;
+    }
+}
+
+/* ------------------------------------------------ */
+
+void keyUpEvents(Render_Parameter *window, SDL_Event *events){
+    switch(events->button.button){
+        case SDL_BUTTON_LEFT:
+            window->isMoving = 0;
+            break;
+    }
+}
+
+/* ------------------------------------------------ */
+
+void mouseMotionEvent(Render_Parameter *window, SDL_Event *events){
+    if(window->isMoving == 1){
+        window->position.x -= events->motion.xrel * 0.003 * (1/window->zoom);
+        window->position.y -= events->motion.yrel * 0.003 * (1/window->zoom);
+    }
+}
+
+/* ------------------------------------------------ */
+
+void mouseWheelEvent(Render_Parameter *window, SDL_Event *events){
+    float sens = 0.2;
+    if(events->wheel.y < 0)
+        window->zoom *= 1 - sens;
+    else if(events->wheel.y > 0)
+        window->zoom *= 1 + sens;
+    if(window->zoom < 0.3){
+        window->zoom = 0.3;
+    }
+
+    window->maxIt = log(window->zoom) * 40 + window->initMaxIt;
+
+    if(window->maxIt < window->initMaxIt)
+        window->maxIt = window->initMaxIt;
 }
 
 /* ------------------------------------------------ */
