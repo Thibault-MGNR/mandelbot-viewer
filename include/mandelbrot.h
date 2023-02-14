@@ -59,4 +59,8 @@ void initWindows(SDL_Renderer **renderer, SDL_Window **window);
 
 void mainloop(Render_Parameter *window, char *array, SDL_Texture *texture, SDL_Renderer *pRenderer);
 
+void update_Texture(Render_Parameter *window, char *array, SDL_Texture *texture, SDL_Renderer *renderer);
+
+void refresh_events(SDL_Event *events, int *isOpen);
+
 #endif
