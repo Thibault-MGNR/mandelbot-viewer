@@ -57,6 +57,6 @@ void printRenderParameter(Render_Parameter *param);
 
 void initWindows(SDL_Renderer **renderer, SDL_Window **window);
 
-void mainloop(void);
+void mainloop(Render_Parameter *window, char *array, SDL_Texture *texture, SDL_Renderer *pRenderer);
 
 #endif

@@ -205,8 +205,24 @@ void initWindows(SDL_Renderer **renderer, SDL_Window **window){
 
 /* ------------------------------------------------ */
 
-void mainloop(void){
+void mainloop(Render_Parameter *window, char *array, SDL_Texture *texture, SDL_Renderer *pRenderer){
+    SDL_Event events;
     
+    int isOpen = 1;
+    while (isOpen)
+    {
+        update_Texture(window, array, texture, pRenderer);
+
+        while (SDL_PollEvent(&events))
+        {
+            switch (events.type)
+            {
+                case SDL_QUIT:
+                    isOpen = 0;
+                    break;
+            }
+        }
+    }
 }
 
 /* ------------------------------------------------ */
@@ -235,30 +251,10 @@ int main(int argc, char* argv[]){
 
     SDL_Window* pWindow{ nullptr };     
     SDL_Renderer* pRenderer{ nullptr };
-    SDL_Event events;
     initWindows(&pRenderer, &pWindow);
-
-    bool isOpen{ true };
 
     SDL_Texture *texture = SDL_CreateTexture(pRenderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, width, height);
 
-    
-
-    while (isOpen)
-    {
-
-        update_Texture(&window, array, texture, pRenderer);
-
-        while (SDL_PollEvent(&events))
-        {
-            switch (events.type)
-            {
-                case SDL_QUIT:
-                    isOpen = false;
-                    break;
-            }
-        }
-    }
 
     cudaFree(window.array_d);
     cudaFree(window.render_d);
